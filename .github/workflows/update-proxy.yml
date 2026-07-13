@@ -3,7 +3,7 @@ name: Update Proxy Subscription
 on:
   schedule:
     # 每天 UTC 时间 0:00 和 12:00 自动运行（可根据需要调整）
-    - cron: '0 0,12 * * *'
+    - cron: '0 0,1,2,3,4,5,6,7,8,9,10,11,12 * * *'
   workflow_dispatch:   # 允许手动触发
 
 jobs:

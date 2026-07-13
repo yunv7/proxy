@@ -2,11 +2,11 @@ name: Update Proxy Subscription
 
 on:
   schedule:
-    - cron: '0 0/1 * * *'          # 每天 UTC 0:00 和 12:00 运行
-  workflow_dispatch:                 # 支持手动触发
+    - cron: '0 0/1 * * *'
+  workflow_dispatch:
 
 permissions:
-  contents: write                    # 授予 GITHUB_TOKEN 写入仓库的权限
+  contents: write
 
 jobs:
   build:
@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6     # 升级到 Node.js 24 兼容版本
+        uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -22,27 +22,21 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: |
-          pip install pyyaml requests
+        run: pip install pyyaml requests
 
       - name: Run conversion script
-        run: python convert.py        # 会在根目录生成 proxy.yml
+        run: python convert.py
 
-      - name: Commit and push proxy.yml
+      - name: Commit and push subscription files
         run: |
-          # 配置 git 用户（使用 GitHub Actions 机器人）
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # 添加文件到暂存区
-          git add proxy.yml
+          git add proxy_list.txt proxy_sub.txt
           
-          # 检查是否有变更（避免空提交）
           if git diff --staged --quiet; then
             echo "没有检测到变更，跳过提交。"
           else
-            # 生成带时间戳的提交信息
-            git commit -m "自动更新代理订阅 ($(date -u '+%Y-%m-%d %H:%M:%S UTC'))"
-            # 推送到仓库（默认使用 GITHUB_TOKEN）
+            git commit -m "自动更新 v2rayN 订阅 ($(date -u '+%Y-%m-%d %H:%M:%S UTC'))"
             git push
           fi

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import re
-import yaml
+import base64
 import requests
 from pathlib import Path
 
@@ -11,7 +11,6 @@ def parse_proxy_line(line: str):
     line = line.strip()
     if not line:
         return None
-    # 取第一个空格前的部分作为 URL
     url = line.split()[0]
     match = re.match(r'^(socks5|http|https)://([^:]+):(\d+)$', url)
     if match:
@@ -21,7 +20,9 @@ def parse_proxy_line(line: str):
 
 def main():
     source_url = "https://gh-proxy.org/https://raw.githubusercontent.com/watchttvv/free-proxy-list/refs/heads/main/proxy.txt"
-    output_path = Path("proxy.yml")   # 相对路径，在 Actions 中工作目录即为仓库根目录
+    # 输出文件：未编码的原始列表（便于查看）和 Base64 编码后的订阅文件
+    output_raw = Path("proxy_list.txt")      # 明文列表
+    output_base64 = Path("proxy_sub.txt")    # Base64 编码（用于 v2rayN）
 
     try:
         print(f"正在从 {source_url} 获取代理列表...")
@@ -32,36 +33,31 @@ def main():
         print(f"❌ 获取远程文件失败：{e}")
         return
 
-    proxies = []
+    lines = []
     for raw_line in content.splitlines():
         parsed = parse_proxy_line(raw_line)
         if parsed is None:
             continue
         protocol, host, port = parsed
 
-        proxy = {
-            "name": f"{protocol}_{host}_{port}",
-            "server": host,
-            "port": port,
-        }
-
+        # 生成 URI（v2rayN 支持 socks5:// 和 http://）
+        # 对于 https:// 协议，统一转为 http://（因为 v2rayN 对 https 代理支持有限）
         if protocol == "socks5":
-            proxy["type"] = "socks5"
-            proxy["udp"] = True
-        elif protocol == "http":
-            proxy["type"] = "http"
-        elif protocol == "https":
-            proxy["type"] = "http"
-            proxy["tls"] = True
+            uri = f"socks5://{host}:{port}"
+        else:   # http 或 https
+            uri = f"http://{host}:{port}"
+        lines.append(uri)
 
-        proxies.append(proxy)
+    # 明文列表
+    plain_text = "\n".join(lines)
+    output_raw.write_text(plain_text, encoding="utf-8")
+    print(f"✅ 明文列表已保存至 {output_raw}，共 {len(lines)} 个节点")
 
-    config = {"proxies": proxies}
-
-    with open(output_path, "w", encoding="utf-8") as f:
-        yaml.dump(config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
-
-    print(f"✅ 转换完成！共 {len(proxies)} 个代理节点已写入 {output_path}")
+    # Base64 编码（v2rayN 订阅需要）
+    base64_bytes = base64.b64encode(plain_text.encode("utf-8"))
+    base64_text = base64_bytes.decode("ascii")
+    output_base64.write_text(base64_text, encoding="utf-8")
+    print(f"✅ Base64 订阅文件已保存至 {output_base64}")
 
 if __name__ == "__main__":
     main()
